@@ -12,35 +12,63 @@ class UDPClient {
         DatagramSocket clientSocket = new DatagramSocket();
         InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
         
+		
+		//variables
         byte[] sendData = new byte[256];
-        
-        int end;
-        //String sentence = inFromUser.readLine(); 
+        String data = "";
+		String indata = "";
+		int eomessage = 1;
+		int iterate = 1;
+    
+	
+		//GET method usage to set up SendData
         sendData = getHTTPRequest().getBytes();
+		
+		//Get the packet ready to send
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 10014);
-        System.out.println("Sending\n");
+        
+		//send the packet
+		System.out.println("Sending\n");
         clientSocket.send(sendPacket);
-        System.out.println("Receiving\n");
-        
-        
-        //while !EOF, write to file
-        String modifiedSentence = "test";
-        int x = 10;
-        
-        while(x > 0) {
-            System.out.println("Received\n");
+
+		while(eomessage != 0){
+			//get the datagram
             byte[] receiveData = new byte[256];
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            x--;
-            clientSocket.receive(receivePacket);
-        }
-
-        //modifiedSentence = new String(receivePacket.getData()); 
-        //System.out.println("FROM SERVER:" + modifiedSentence); 
+			clientSocket.receive(receivePacket);
+			
+			
+			//Get the data from the datagram
+			byte [] messageData = receivePacket.getData();
+			
+			//If the last packet stop the loop
+			int x = 0;
+			while(x < messageData.length-1 && eomessage != 0){
+				eomessage = messageData[x];
+				x++;
+			}
+			
+			//Put the message back together
+			if (iterate > 1 && eomessage !=0){
+				data = new String(receiveData);
+				String getridofheader = headerdelete(data);
+				indata = indata.concat(getridofheader);
+			}
+			iterate++;
+			
+			}
+			//Print data and write to the file
+			System.out.println("The File message is: \n" + data);
+			filewrite(indata);
         clientSocket.close();
+		
+		
     }
 
-
+	public static String headerdelete(String packet){
+		String delete = packet.substring(packet.indexOf(":") + 11);
+		return delete;
+	}
     public static String getHTTPRequest() throws IOException {
         BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
         System.out.println("What file do you want to view?\n");
@@ -48,7 +76,12 @@ class UDPClient {
         return "GET" + input + ".html/1.0";
     }
     
-
+	public static void filewrite(String out) throws IOException{
+		PrintWriter write = new PrintWriter("Out.txt");
+		write.println(out);
+		write.close();
+		System.out.println("Written to file");
+	}
     public void Gremlin(int prob) {
         //based on a probablity changes some bits in the message
     }
