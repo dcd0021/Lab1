@@ -9,7 +9,7 @@ class UDPClient {
     public static void main(String args[]) throws Exception {
         BufferedReader inFromUser =  new BufferedReader(new InputStreamReader(System.in));
         DatagramSocket clientSocket = new DatagramSocket();
-        InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
+       InetAddress IPAddress = InetAddress.getByName("Tux050"); 
         
         
         //variables
@@ -33,9 +33,11 @@ class UDPClient {
         while(eomessage != 0){
             //get the datagram
             byte[] receiveData = new byte[256];
+			System.out.println("At the datagram");
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+			System.out.println("At the datagram below");
             clientSocket.receive(receivePacket);
-            
+            System.out.println("Got a packet!!");
             
             //Get the data from the datagram
             byte [] messageData = receivePacket.getData();
@@ -50,7 +52,7 @@ class UDPClient {
             //Put the message back together
             if (iterate > 1 && eomessage !=0){
                 data = new String(receiveData);
-                String getridofheader = headerdelete(data);
+                String getridofheader = headerdelete(data); //get rid of the header
                 indata = indata.concat(getridofheader);
             }
             iterate++;
@@ -63,18 +65,21 @@ class UDPClient {
         
         
     }
-    
+    //delete the header of the packet to print
     public static String headerdelete(String packet){
         String delete = packet.substring(packet.indexOf(":") + 11);
         return delete;
     }
+	
+	//HTTP get request
     public static String getHTTPRequest() throws IOException {
         BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
         System.out.println("What file do you want to view?\n");
         String input = in.readLine();
-        return "GET" + input + ".html/1.0";
+        return "GET " + input + ".html/1.0";
     }
     
+	//Write to a file the data from the server
     public static void filewrite(String out) throws IOException{
         PrintWriter write = new PrintWriter("Out.txt");
         write.println(out);
@@ -96,30 +101,36 @@ class UDPClient {
 class UDPServer {
     
     public static void main(String args[]) throws Exception {
-        
+		
+        //Set up datagram and assign socket
         DatagramSocket serverSocket = new DatagramSocket(10014);
         
+		
+		//variables for sending and receiving data
         byte[] receiveData = new byte[256];
         byte[] sendData  = new byte[256];
-        
+		
+		
+        //infinite loop that is waiting to send and receive packets
         while (true) {
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
             serverSocket.receive(receivePacket);
-            
+            System.out.println("Server");
             int port = receivePacket.getPort();
             InetAddress addr = receivePacket.getAddress();
             
             String request = new String(receivePacket.getData());
-            String[] spReq = request.split(" ");
+            String[] spReq = request.split("  ");
             
             
             // get the filename and access it
-            String fName = spReq[1];
-            RandomAccessFile data = new RandomAccessFile(fName, "r");
+            //String fName = spReq[1];
+            RandomAccessFile data = new RandomAccessFile("TestFile.html", "r");
+			
             long fSize = 0;
             int dataOffset = 0;
             int sequenceNum = 0;
-            
+ 
             // Create and send packet
             while (dataOffset != -1) {
                 
@@ -156,6 +167,8 @@ class UDPServer {
                     sendData = dataToSend.getBytes();
                     DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                     serverSocket.send(sendPacket);
+					
+					//sending packets to client
                 } else {
                     
                     sendData = dataToSend.getBytes();
@@ -175,7 +188,7 @@ class UDPServer {
         } // while
     } // main()
     
-    
+    //gets the checksum to check for bit errors
     public static String calculateCheckSum(byte[] packetInfo) {
         int fullCheckSum = checkSum(packetInfo);
         String message = new String(packetInfo);
