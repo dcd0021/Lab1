@@ -2,7 +2,7 @@
 
 import java.io.*;
 import java.net.*;
-
+import java.util.Random; 
 
 
 class UDPClient {
@@ -10,7 +10,6 @@ class UDPClient {
         BufferedReader inFromUser =  new BufferedReader(new InputStreamReader(System.in));
         DatagramSocket clientSocket = new DatagramSocket();
        InetAddress IPAddress = InetAddress.getByName("Tux050"); 
-        
         
         //variables
         byte[] sendData = new byte[256];
@@ -86,9 +85,6 @@ class UDPClient {
         write.close();
         System.out.println("Written to file");
     }
-    public void Gremlin(int prob) {
-        //based on a probablity changes some bits in the message
-    }
     public void CheckSum() {
         //checks for errors in the message that could have been modified
     }
@@ -101,7 +97,11 @@ class UDPClient {
 class UDPServer {
     
     public static void main(String args[]) throws Exception {
-		
+		BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
+		System.out.println("What probabilty would you like the Gremlin to use?");
+		String probs = in.readLine();
+		int prob = Integer.parseInt(probs);
+		System.out.println("Server Initialized, waiting for messages...");
         //Set up datagram and assign socket
         DatagramSocket serverSocket = new DatagramSocket(10014);
         
@@ -225,9 +225,35 @@ class UDPServer {
     } // packetHeader()
     
 
-    
-    public void Gremlin() {
-    
+    //44 is a random number to corrupt the bit
+    public static byte[] Gremlin(byte[] input, int prob) {
+		
+		Random randForGremln = new Random(); // see if we are going to corrupt
+		Random rands = new Random(); // pick how many bits to corrupt
+		int gremResult = randForGremln.nextInt(100);
+		int rand = randForGremln.nextInt(100);
+		int firstByte = rands.nextInt(256);
+		int secondByte = rands.nextInt(256);
+		int thirdByte = rands.nextInt(256);
+	if(gremResult > prob){
+		if(rand <= 50){
+			//change one byte
+			input[firstByte] = 44;
+		}
+		if (rand <= 80 && rand > 50){
+			//change two bytes
+			input[firstByte] = 44;
+			input[secondByte] = 44;
+		}
+		if (rand <= 100 && rand > 80){
+			//change three bytes
+			input[firstByte] = 44;
+			input[secondByte] = 44;
+			input[thirdByte] = 44;
+		}
+	}
+	return input;
+	//then pass to checksum
     }
     
     public static int checkSum(byte[] d) {
