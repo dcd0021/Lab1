@@ -2,18 +2,21 @@
 
 import java.io.*;
 import java.net.*;
-import java.util.Random; 
+import java.util.*; 
+import java.nio.charset.StandardCharsets;
+
 
 
 class UDPClient {
     public static void main(String args[]) throws Exception {
+		String randoms = "wxyz";
         BufferedReader inFromUser =  new BufferedReader(new InputStreamReader(System.in));
         DatagramSocket clientSocket = new DatagramSocket();
-       InetAddress IPAddress = InetAddress.getByName("Tux050"); 
+       InetAddress IPAddress = InetAddress.getByName("Tux058"); 
         
         //variables
         byte[] sendData = new byte[256];
-        String data = "";
+        //String data = "";
         String indata = "";
         int eomessage = 1;
         int iterate = 1;
@@ -26,39 +29,33 @@ class UDPClient {
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 10014);
         
         //send the packet
-        System.out.println("Sending\n");
+        //System.out.println("Sending\n");
         clientSocket.send(sendPacket);
-        
+        byte[] receiveData = new byte[256];
         while(eomessage != 0){
             //get the datagram
-            byte[] receiveData = new byte[256];
-			System.out.println("At the datagram");
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-			System.out.println("At the datagram below");
-            clientSocket.receive(receivePacket);
-            System.out.println("Got a packet!!");
             
-            //Get the data from the datagram
+			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            //receive datagram
+			clientSocket.receive(receivePacket);
+            
+			//Get the data from the datagram
             byte [] messageData = receivePacket.getData();
-            
-            //If the last packet stop the loop
-            int x = 0;
-            while(x < messageData.length-1 && eomessage != 0){
-                eomessage = messageData[x];
-                x++;
-            }
-            
-            //Put the message back together
-            if (iterate > 1 && eomessage !=0){
-                data = new String(receiveData);
-                String getridofheader = headerdelete(data); //get rid of the header
-                indata = indata.concat(getridofheader);
-            }
-            iterate++;
+			System.out.println(messageData);
+			
+			
+
+            String str = new String(messageData,StandardCharsets.UTF_8);
+			System.out.println(str);
+			if (str.contains(randoms)){
+				System.out.println("The message is" + messageData + "WE BROKE");
+				break;
+			}
+			
             
         }
         //Print data and write to the file
-        System.out.println("The File message is: \n" + data);
+        System.out.println("The File message is: \n" + indata);
         filewrite(indata);
         clientSocket.close();
         
@@ -95,8 +92,9 @@ class UDPClient {
 
 
 class UDPServer {
-    
+     
     public static void main(String args[]) throws Exception {
+		String randoms = "wxyz";
 		BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
 		System.out.println("What probabilty would you like the Gremlin to use?");
 		String probs = in.readLine();
@@ -117,6 +115,7 @@ class UDPServer {
             serverSocket.receive(receivePacket);
             System.out.println("Server");
             int port = receivePacket.getPort();
+			System.out.println("The port number is " + port + "\n");
             InetAddress addr = receivePacket.getAddress();
             
             String request = new String(receivePacket.getData());
@@ -149,6 +148,8 @@ class UDPServer {
                     
                     pseudoHeader = makePacketHeader(sequenceNum);
                     header = pseudoHeader.getBytes();
+					System.out.println("HEADER!!!!!");
+					System.out.println(header);
                     packet = padPacketWithSpaces(header);
                     dataOffset = data.read(packet, header.length, (packet.length - header.length));
                 }
@@ -165,15 +166,20 @@ class UDPServer {
                     header[header.length - 1] = 0;
                     dataToSend = calculateCheckSum(header);
                     sendData = dataToSend.getBytes();
+					byte [] nullarray = randoms.getBytes();
                     DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
+					DatagramPacket nullpacket = new DatagramPacket(nullarray, nullarray.length, addr, port);
                     serverSocket.send(sendPacket);
-					
+					serverSocket.send(nullpacket);
+					System.out.println("LAST PACKET!!!!");
+					break;
 					//sending packets to client
                 } else {
                     
                     sendData = dataToSend.getBytes();
                     DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                     serverSocket.send(sendPacket);
+					System.out.println("Sending the first packets!");
                     
                 }
                 
@@ -235,7 +241,7 @@ class UDPServer {
 		int firstByte = rands.nextInt(256);
 		int secondByte = rands.nextInt(256);
 		int thirdByte = rands.nextInt(256);
-	if(gremResult > prob){
+	if(gremResult <= prob){
 		if(rand <= 50){
 			//change one byte
 			input[firstByte] = 44;
