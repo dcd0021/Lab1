@@ -136,7 +136,7 @@ class UDPServer {
             
          String request = new String(receivePacket.getData());
          String[] spReq = request.split("  ");
-            
+         int checkSum = checkSum(receiveData);
             
             // get the filename and access it
             //String fName = spReq[1];
@@ -162,7 +162,7 @@ class UDPServer {
             }
             else {
                     
-               pseudoHeader = makePacketHeader(sequenceNum);
+               pseudoHeader = makePacketHeader(sequenceNum, checkSum);
                header = pseudoHeader.getBytes();
             	//System.out.println("HEADER!!!!!");
                System.out.println(header);
@@ -195,6 +195,7 @@ class UDPServer {
             else {
                     
                sendData = dataToSend.getBytes();
+               checkSum = checkSum(sendData);
                System.out.println(sendData.length);
                sendData = Gremlin(sendData, prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
@@ -240,8 +241,8 @@ class UDPServer {
       return paddedHeader;
    }
     
-   public static String makePacketHeader(int packetNum) {
-      return "Packet " + packetNum + "\nChecksum: 00000\r\n\r\n";
+   public static String makePacketHeader(int packetNum, int checkSum) {
+      return "Packet " + packetNum + "\nChecksum: " + checkSum + "\r\n\r\n";
    }
     
     
