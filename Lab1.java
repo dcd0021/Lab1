@@ -13,7 +13,7 @@ class UDPClient {
       BufferedReader inFromUser =  new BufferedReader(new InputStreamReader(System.in));
       DatagramSocket clientSocket = new DatagramSocket();
       BufferedWriter writer = new BufferedWriter(new FileWriter("Outing.txt"));
-      InetAddress IPAddress = InetAddress.getByName("Tux056"); 
+      InetAddress IPAddress = InetAddress.getByName("Tux059"); 
         
         //variables
       byte[] sendData = new byte[256];
@@ -69,6 +69,9 @@ class UDPClient {
    }
     //delete the header of the packet to print
    public static String headerdelete(String packet){
+      if(!packet.contains("\r\n\r\n")){
+         return packet;
+      }
       String delimiter = "\r\n\r\n";
    
       String [] dat = packet.split(delimiter);
@@ -169,7 +172,7 @@ class UDPServer {
                 
             System.out.println("Processing packet " + (sequenceNum));
                 
-            //dataToSend = calculateCheckSum(packet);
+            dataToSend = calculateCheckSum(packet);
                 
             System.out.println(dataToSend);
             System.out.println("Sending packet ");
@@ -192,7 +195,8 @@ class UDPServer {
             else {
                     
                sendData = dataToSend.getBytes();
-               sendData = Gremlin(sendData,prob);
+               System.out.println(sendData.length);
+               sendData = Gremlin(sendData, prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                serverSocket.send(sendPacket);
             	//System.out.println("Sending the first packets!");
@@ -250,21 +254,6 @@ class UDPServer {
 
     //44 is a random number to corrupt the bit
    public static byte[] Gremlin(byte[] input, int prob) {
-      Random rands = new Random();
-      int rand = rands.nextInt(100);
-      if(input.length != 0){
-         if(rand < prob){
-            int corrupt = rands.nextInt(3);
-            while (corrupt-- > 0){
-               int idx = rands.nextInt(input.length-1);
-               input[idx] = '?';
-            }
-         }
-      }
-      return input;
-   }
-   
-   	/*
       Random randForGremln = new Random(); // see if we are going to corrupt
       Random rands = new Random(); // pick how many bits to corrupt
       int gremResult = randForGremln.nextInt(100);
@@ -293,8 +282,12 @@ class UDPServer {
          }
       }
       return input;
-   //then pass to checksum
-   */
+   
+   }
+   
+   	
+           //then pass to checksum
+   
    
     
    public static int checkSum(byte[] d) {
