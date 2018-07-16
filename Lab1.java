@@ -78,7 +78,7 @@ class UDPClient extends UDP {
    public static int extractCheckSum(String s ) {
       String fDim = "Checksum:";
 
-     if (!s.contains(fDim) || !s.contains(crlf)) return - 1;
+     if (!s.contains(fDim) || !s.contains(crlf) || s.contains("?")) return - 1;
 
       String l = s.split(fDim)[1];
       String r = l.split(crlf)[0];
