@@ -35,6 +35,8 @@ class UDPClient {
             
          String incomingString = new String(receivePacket.getData(), StandardCharsets.UTF_8);
 
+
+
          if (incomingString.contains(randoms)){
             System.out.println("Found last packet--breaking");
             break;
@@ -43,6 +45,9 @@ class UDPClient {
          int serverCheckSum = extractCheckSum(incomingString);
 
          String message = deleteHeader(incomingString);
+
+         System.out.println("\n\n\nsequence:[" + message + "]\n\n\n");
+
 
          int clientCheckSum = checkSum(message.getBytes());
 
@@ -92,7 +97,7 @@ class UDPClient {
 	//HTTP get request
    public static String getHTTPRequest() throws IOException {
       BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
-      System.out.println("What file do you want to view?");
+      System.out.println("What file do you want to view? (exclude .html)");
       String input = in.readLine();
       return "GET " + input + ".html/1.0";
    } // getHTTPRequest()
@@ -132,12 +137,13 @@ class UDPServer {
          int port = receivePacket.getPort();
          System.out.println("The port number is " + port + "\n");
          InetAddress addr = receivePacket.getAddress();
+
+
             
          String request = new String(receivePacket.getData());
-         String[] spReq = request.split("  ");
-         int checkSum = checkSum(receiveData);
-            
-         RandomAccessFile data = new RandomAccessFile("TestFile.html", "r");
+
+
+         RandomAccessFile data = new RandomAccessFile(extractFileName(request), "r");
       	
          long fSize = 0;
          int dataOffset = 0;
@@ -148,17 +154,14 @@ class UDPServer {
             // Create and send packet
          while (dataOffset != -1) {
                 
-            String pseudoHeader = "";
             String dataToSend = "";
-            byte[] header;
+            byte[] header = new byte [256];
             byte[] packet = new byte [256];
                 
          
-            pseudoHeader = makePacketHeader(sequenceNum, checkSum);
-            header = pseudoHeader.getBytes();
+
        
-            packet = padPacketWithSpaces(header);
-            dataOffset = data.read(packet, 0, (packet.length - headerLength));
+            dataOffset = data.read(packet, 0, (packet.length - headerLength - 1));
 
 
             byte [] finalHeader = makePacketHeader(sequenceNum, checkSum(packet)).getBytes();
@@ -169,6 +172,8 @@ class UDPServer {
             outputStream.write(packet);
 
             byte [] c = outputStream.toByteArray();
+
+            System.out.println("\n\n\nsequence:"+ sequenceNum+ "[" + c + "]\n\n\n");
          
                 
                 
@@ -195,13 +200,15 @@ class UDPServer {
             } 
             else {
                sendData = c;//dataToSend.getBytes();
-               checkSum = checkSum(sendData);
+               //checkSum = checkSum(sendData);
                sendData = Gremlin(sendData, prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                serverSocket.send(sendPacket);
             }
                 
             sequenceNum++;
+
+
                 
                 
          } // while dataOffset
@@ -215,6 +222,17 @@ class UDPServer {
    } // main()
 
 
+   public static String extractFileName(String s) {
+      String fDim = "GET ";
+      String sDim = ".html";
+
+      String [] t = s.split(fDim);
+      String f = t[1].split(sDim)[0];
+
+      return f + ".html";
+   }
+
+
     
     //gets the checksum to check for bit errors
    public static String calculateCheckSum(byte[] packetInfo) {
@@ -224,22 +242,7 @@ class UDPServer {
       //message += "insert check sum";
       return message;
    }
-    
-    
-    
-   public static byte[] padPacketWithSpaces(byte[] header) {
-      byte[] paddedHeader = new byte[123];
-        
-      for (int i = 0; i < paddedHeader.length; i++) {
-         if (i < header.length) {
-            paddedHeader[i] = header[i];
-         } 
-         else {
-            paddedHeader[i] = 32;
-         }
-      }
-      return paddedHeader;
-   }
+
     
    public static String makePacketHeader(int packetNum, int checkSum) {
       return "Packet:" + packetNum + "\nChecksum:" + checkSum + "\r\n\r\n";
