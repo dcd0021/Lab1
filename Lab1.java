@@ -1,5 +1,3 @@
-
-
 import java.io.*;
 import java.net.*;
 import java.util.*; 
@@ -8,99 +6,96 @@ import java.nio.charset.StandardCharsets;
 
 
 class UDPClient {
+
+
+   public static void sendRequest() {
+
+   } // sendRequest()
+
+
    public static void main(String args[]) throws Exception {
       String randoms = "wxyz";
       BufferedReader inFromUser =  new BufferedReader(new InputStreamReader(System.in));
       DatagramSocket clientSocket = new DatagramSocket();
       BufferedWriter writer = new BufferedWriter(new FileWriter("Outing.txt"));
-      InetAddress IPAddress = InetAddress.getByName("Tux059"); 
+      InetAddress IPAddress = InetAddress.getByName("Tux056"); 
         
-        //variables
       byte[] sendData = new byte[256];
-        //String data = "";
-      String indata = "";
-      int eomessage = 1;
-      int iterate = 1;
       String str = "";
         
-        //GET method usage to set up SendData
       sendData = getHTTPRequest().getBytes();
-        
-        //Get the packet ready to send
       DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 10014);
-        
-        //send the packet
-        //System.out.println("Sending\n");
       clientSocket.send(sendPacket);
       byte[] receiveData = new byte[256];
-      while(eomessage != 0){
-            //get the datagram
-            
+
+      while (true) {    
+
          DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            //receive datagram
          clientSocket.receive(receivePacket);
             
-      	//Get the data from the datagram
-         byte [] messageData = receivePacket.getData();
-         //System.out.println(messageData);
-      	
-      	
-      
-         String srtTemp = new String(messageData,StandardCharsets.UTF_8);
-         str.concat(srtTemp);
-         writer.write(srtTemp);
-         srtTemp = headerdelete(srtTemp);
-         
-         System.out.println(srtTemp);
-         if (srtTemp.contains(randoms)){
-            System.out.println("The message is" + messageData + "WE BROKE");
+         String incomingString = new String(receivePacket.getData(), StandardCharsets.UTF_8);
+
+         if (incomingString.contains(randoms)){
+            System.out.println("Found last packet--breaking");
             break;
          }
-      	
+
+         int serverCheckSum = extractCheckSum(incomingString);
+
+         String message = deleteHeader(incomingString);
+
+         int clientCheckSum = checkSum(incomingString.getBytes());
+
+         System.out.println("server check sum is [" + serverCheckSum + "] client check sum is [" + clientCheckSum + "]");
+         str.concat(incomingString);
+         writer.write(incomingString);
+
             
-      }
-        //Print data and write to the file
-      System.out.println(str);
+      } // while true
+
       writer.close();
-      
-      clientSocket.close();
-        
-        
-   }
-    //delete the header of the packet to print
-   public static String headerdelete(String packet){
-      if(!packet.contains("\r\n\r\n")){
-         return packet;
-      }
-      String delimiter = "\r\n\r\n";
+      clientSocket.close();  
+   } // main()
+
+
+  // public static void extractData
+
+   public static int checkSum(byte[] d) {
+      int s = 0;
+      for (int i = 0; i < d.length; i++) s += d[i];
+      return s;
+   } // checkSum()
+
    
+   public static int extractCheckSum(String s ) {
+      String fDim = "Checksum:";
+      String sDim = "\r\n\r\n";
+
+     if (!s.contains(fDim) || !s.contains(sDim)) return - 1;
+
+      String l = s.split(fDim)[1];
+      String r = l.split(sDim)[0];
+      return Integer.parseInt(r);
+   } // extractCheckSum()
+
+
+    //delete the header of the packet to print
+   public static String deleteHeader(String packet){
+      if(!packet.contains("\r\n\r\n")) return packet;
+      String delimiter = "\r\n\r\n";
       String [] dat = packet.split(delimiter);
       return dat[1];
-      
-   }
+   } // deleteHeader()
 	
+
 	//HTTP get request
    public static String getHTTPRequest() throws IOException {
       BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
-      System.out.println("What file do you want to view?\n");
+      System.out.println("What file do you want to view?");
       String input = in.readLine();
       return "GET " + input + ".html/1.0";
-   }
+   } // getHTTPRequest()
     
-    
-	
-   //Write to a file the data from the server
-   /*
-   public static void filewrite(String out) throws IOException{
-      PrintWriter write = new PrintWriter("Out.txt");
-      write.println(out);
-      write.close();
-      System.out.println("Written to file");
-   }
-   */
-   public void CheckSum() {
-        //checks for errors in the message that could have been modified
-   }
     
 } // UDPClient
 
@@ -108,25 +103,28 @@ class UDPClient {
 
 
 class UDPServer {
-     
-   public static void main(String args[]) throws Exception {
-      String randoms = "\r\n\r\nwxyz";
+
+   public static int getProbability() throws IOException {
       BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
       System.out.println("What probabilty would you like the Gremlin to use?");
       String probs = in.readLine();
-      int prob = Integer.parseInt(probs);
+      return Integer.parseInt(probs);
+   } // getProbability()
+
+
+   public static void main(String args[]) throws Exception {
+
+      String randoms = "\r\n\r\nwxyz";
+      int prob = getProbability();
       System.out.println("Server Initialized, waiting for messages...");
-        //Set up datagram and assign socket
       DatagramSocket serverSocket = new DatagramSocket(10014);
         
-   	
    	//variables for sending and receiving data
       byte[] receiveData = new byte[256];
       byte[] sendData  = new byte[256];
    	
-   	
-        //infinite loop that is waiting to send and receive packets
       while (true) {
+
          DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
          serverSocket.receive(receivePacket);
          System.out.println("Server");
@@ -138,8 +136,6 @@ class UDPServer {
          String[] spReq = request.split("  ");
          int checkSum = checkSum(receiveData);
             
-            // get the filename and access it
-            //String fName = spReq[1];
          RandomAccessFile data = new RandomAccessFile("TestFile.html", "r");
       	
          long fSize = 0;
@@ -161,47 +157,48 @@ class UDPServer {
                packet = padPacketWithSpaces(header);
             }
             else {
-                    
+            
                pseudoHeader = makePacketHeader(sequenceNum, checkSum);
                header = pseudoHeader.getBytes();
             	//System.out.println("HEADER!!!!!");
-               System.out.println(header);
+              // System.out.println(header);
                packet = padPacketWithSpaces(header);
                dataOffset = data.read(packet, header.length, (packet.length - header.length));
             }
                 
-            System.out.println("Processing packet " + (sequenceNum));
+          //  System.out.println("Processing packet " + (sequenceNum));
                 
             dataToSend = calculateCheckSum(packet);
+
+            System.out.println("packet" + sequenceNum + " data:[" + dataToSend + "]");
                 
-            System.out.println(dataToSend);
-            System.out.println("Sending packet ");
+            //System.out.println(dataToSend);
+          //  System.out.println("Sending packet ");
                 
                 // if last packet
             if (dataOffset == -1) {
                header[header.length - 1] = 0;
                dataToSend = calculateCheckSum(header);
                sendData = dataToSend.getBytes();
+
+
+             //  System.out.println("\n\nTHE DAT IS [" + dataToSend + "]");
+
                byte [] nullarray = randoms.getBytes();
-               //sendData = Gremlin(sendData,prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                DatagramPacket nullpacket = new DatagramPacket(nullarray, nullarray.length, addr, port);
                serverSocket.send(sendPacket);
                serverSocket.send(nullpacket);
-               System.out.println("LAST PACKET!!!!");
                break;
             	//sending packets to client
             } 
             else {
-                    
                sendData = dataToSend.getBytes();
                checkSum = checkSum(sendData);
-               System.out.println(sendData.length);
+             //  System.out.println(sendData.length);
                sendData = Gremlin(sendData, prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                serverSocket.send(sendPacket);
-            	//System.out.println("Sending the first packets!");
-                    
             }
                 
             sequenceNum++;
@@ -213,7 +210,11 @@ class UDPServer {
             
             
       } // while
+
+
    } // main()
+
+
     
     //gets the checksum to check for bit errors
    public static String calculateCheckSum(byte[] packetInfo) {
@@ -227,7 +228,6 @@ class UDPServer {
     
     
    public static byte[] padPacketWithSpaces(byte[] header) {
-        
       byte[] paddedHeader = new byte[123];
         
       for (int i = 0; i < paddedHeader.length; i++) {
@@ -242,7 +242,7 @@ class UDPServer {
    }
     
    public static String makePacketHeader(int packetNum, int checkSum) {
-      return "Packet " + packetNum + "\nChecksum: " + checkSum + "\r\n\r\n";
+      return "Packet " + packetNum + "\nChecksum:" + checkSum + "\r\n\r\n";
    }
     
     
@@ -287,7 +287,6 @@ class UDPServer {
    }
    
    	
-           //then pass to checksum
    
    
     
