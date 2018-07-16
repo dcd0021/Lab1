@@ -4,8 +4,20 @@ import java.util.*;
 import java.nio.charset.StandardCharsets;
 
 
+abstract class UDP {
+   static final String crlf = "\r\n\r\n";
+   static final int headerSize = 8;
 
-class UDPClient {
+   public static int checkSum(byte[] d) {
+      int s = 0;
+      for (int i = 0; i < d.length; i++) s += d[i];
+      return s;
+   } // checkSum()
+
+}
+
+
+class UDPClient extends UDP {
 
 
    public static void sendRequest() {
@@ -62,30 +74,22 @@ class UDPClient {
 
   // public static void extractData
 
-   public static int checkSum(byte[] d) {
-      int s = 0;
-      for (int i = 0; i < d.length; i++) s += d[i];
-      return s;
-   } // checkSum()
-
    
    public static int extractCheckSum(String s ) {
       String fDim = "Checksum:";
-      String sDim = "\r\n\r\n";
 
-     if (!s.contains(fDim) || !s.contains(sDim)) return - 1;
+     if (!s.contains(fDim) || !s.contains(crlf)) return - 1;
 
       String l = s.split(fDim)[1];
-      String r = l.split(sDim)[0];
+      String r = l.split(crlf)[0];
       return Integer.parseInt(r);
    } // extractCheckSum()
 
 
     //delete the header of the packet to print
    public static String deleteHeader(String packet){
-      if(!packet.contains("\r\n\r\n")) return packet;
-      String delimiter = "\r\n\r\n";
-      String [] dat = packet.split(delimiter);
+      if(!packet.contains(crlf)) return packet;
+      String [] dat = packet.split(crlf);
       return dat[1];
    } // deleteHeader()
 	
@@ -93,7 +97,7 @@ class UDPClient {
 	//HTTP get request
    public static String getHTTPRequest() throws IOException {
       BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
-      System.out.println("What file do you want to view?");
+      System.out.println("What file do you want to view? (exclude .html)");
       String input = in.readLine();
       return "GET " + input + ".html/1.0";
    } // getHTTPRequest()
@@ -104,7 +108,7 @@ class UDPClient {
 
 
 
-class UDPServer {
+class UDPServer extends UDP {
 
    public static int getProbability() throws IOException {
       BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
@@ -140,43 +144,38 @@ class UDPServer {
             
          RandomAccessFile data = new RandomAccessFile("TestFile.html", "r");
 
-
-      	
          long fSize = 0;
-         int dataOffset = 0;
-         int sequenceNum = 0;
+         int bytesRead = 0;
+         int packetNumber = 0;
       
             // Create and send packet
-         while (dataOffset != -1) {
+         while (bytesRead != -1) {
                 
             String pseudoHeader = "";
             String dataToSend = "";
             byte[] header;
             byte[] packet = new byte[256];
+            byte[] tHeader = new byte[27];
                 
-            pseudoHeader = makePacketHeader(sequenceNum, checkSum);
+            pseudoHeader = makePacketHeader(packetNumber, checkSum);
             header = pseudoHeader.getBytes();
            // packet = padPacketWithSpaces(header);
 
-            dataOffset = data.read(packet, header.length, (packet.length - header.length));
-
+            String fakeheader = defaultHeader();
+            bytesRead = data.read(packet, header.length, (packet.length - tHeader.length));
             System.out.println("packet[" + new String(packet) + "]");
-                
+
+            int getCheckSum = checkSum(packet);
+            System.out.println("THE PACKET L is" + getCheckSum);
+
             dataToSend = calculateCheckSum(packet);
 
-          //  System.out.println("SNDD1["+ new String(sendData)+"]");
 
-
-                // if last packet
-            if (dataOffset == -1) {
+            // if last packet
+            if (bytesRead == -1) {
                header[header.length - 1] = 0;
                dataToSend = calculateCheckSum(header);
                sendData = dataToSend.getBytes();
-
-             //  System.out.println("SNDD2["+new String(sendData)+"]");
-
-
-             //  System.out.println("\n\nTHE DAT IS [" + dataToSend + "]");
 
                byte [] nullarray = randoms.getBytes();
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
@@ -188,23 +187,30 @@ class UDPServer {
             } 
             else {
                sendData = dataToSend.getBytes();
-
-            //  System.out.println("SNDD3["+new String(sendData)+"]");
                checkSum = checkSum(sendData);
                sendData = Gremlin(sendData, prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                serverSocket.send(sendPacket);
             }
                 
-            sequenceNum++;
+            packetNumber++;
                 
                 
-         } // while dataOffset
+         } // while bytesRead
                         
       } // while
 
    } // main()
 
+
+   public static String defaultHeader() {
+      return "Packet 00\nChecksum:0000\r\n\r\n";
+   } // pseudoHeaderCreator()
+
+
+   public static String makePacketHeader(int packetNum, int checkSum) {
+      return "Packet " + packetNum + "\nChecksum:" + checkSum + crlf;
+   }
 
     
     //gets the checksum to check for bit errors
@@ -228,15 +234,13 @@ class UDPServer {
    }
     
 
-   public static String makePacketHeader(int packetNum, int checkSum) {
-      return "Packet " + packetNum + "\nChecksum:" + checkSum + "\r\n\r\n";
-   }
+
     
     
    public static String packetHeader(long n) {
       return "HTTP/1.0 200 Document Follows\r\n" +
             "Content-Type: text/plain\r\n" +
-            "Content-Length: " + n  + "\r\n\r\nData";
+            "Content-Length: " + n + crlf + "Data";
    } // packetHeader()
     
 
@@ -273,12 +277,7 @@ class UDPServer {
    
    }
    
-   	
-   public static int checkSum(byte[] d) {
-      int s = 0;
-      for (int i = 0; i < d.length; i++) s += d[i];
-      return s;
-   } // checkSum()
+
 } // UDPServer
 
 
