@@ -44,7 +44,7 @@ class UDPClient {
 
          String message = deleteHeader(incomingString);
 
-         int clientCheckSum = checkSum(incomingString.getBytes());
+         int clientCheckSum = checkSum(message.getBytes());
 
          System.out.println("server check sum is [" + serverCheckSum + "] client check sum is [" + clientCheckSum + "]");
          str.concat(incomingString);
@@ -73,8 +73,6 @@ class UDPClient {
 
      if (!s.contains(fDim) || !s.contains(sDim) || s.contains("?")) return - 1;
 
-
-     
 
       String l = s.split(fDim)[1];
       String r = l.split(sDim)[0];
@@ -144,6 +142,8 @@ class UDPServer {
          long fSize = 0;
          int dataOffset = 0;
          int sequenceNum = 0;
+
+         int headerLength = defaultHeader().getBytes().length;
       
             // Create and send packet
          while (dataOffset != -1) {
@@ -151,54 +151,51 @@ class UDPServer {
             String pseudoHeader = "";
             String dataToSend = "";
             byte[] header;
-            byte[] packet;
+            byte[] packet = new byte [256];
                 
+         
+            pseudoHeader = makePacketHeader(sequenceNum, checkSum);
+            header = pseudoHeader.getBytes();
+       
+            packet = padPacketWithSpaces(header);
+            dataOffset = data.read(packet, 0, (packet.length - headerLength));
+
+
+            byte [] finalHeader = makePacketHeader(sequenceNum, checkSum(packet)).getBytes();
+
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            outputStream.write(finalHeader);
+            outputStream.write(packet);
+
+            byte [] c = outputStream.toByteArray();
+         
                 
-            if (sequenceNum == 0) {
-               pseudoHeader = packetHeader(fSize);
-               header = pseudoHeader.getBytes();
-               packet = padPacketWithSpaces(header);
-            }
-            else {
-            
-               pseudoHeader = makePacketHeader(sequenceNum, checkSum);
-               header = pseudoHeader.getBytes();
-            	//System.out.println("HEADER!!!!!");
-              // System.out.println(header);
-               packet = padPacketWithSpaces(header);
-               dataOffset = data.read(packet, header.length, (packet.length - header.length));
-            }
-                
-          //  System.out.println("Processing packet " + (sequenceNum));
                 
             dataToSend = calculateCheckSum(packet);
 
             System.out.println("packet" + sequenceNum + " data:[" + dataToSend + "]");
                 
-            //System.out.println(dataToSend);
-          //  System.out.println("Sending packet ");
+
                 
                 // if last packet
             if (dataOffset == -1) {
                header[header.length - 1] = 0;
                dataToSend = calculateCheckSum(header);
                sendData = dataToSend.getBytes();
-
-
              //  System.out.println("\n\nTHE DAT IS [" + dataToSend + "]");
 
                byte [] nullarray = randoms.getBytes();
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                DatagramPacket nullpacket = new DatagramPacket(nullarray, nullarray.length, addr, port);
-               serverSocket.send(sendPacket);
+             ///  serverSocket.send(sendPacket);
                serverSocket.send(nullpacket);
                break;
             	//sending packets to client
             } 
             else {
-               sendData = dataToSend.getBytes();
+               sendData = c;//dataToSend.getBytes();
                checkSum = checkSum(sendData);
-             //  System.out.println(sendData.length);
                sendData = Gremlin(sendData, prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                serverSocket.send(sendPacket);
@@ -245,14 +242,19 @@ class UDPServer {
    }
     
    public static String makePacketHeader(int packetNum, int checkSum) {
-      return "Packet " + packetNum + "\nChecksum:" + checkSum + "\r\n\r\n";
+      return "Packet:" + packetNum + "\nChecksum:" + checkSum + "\r\n\r\n";
+   }
+
+
+      public static String defaultHeader() {
+      return "Packet:0000\nChecksum:0000\r\n\r\n";
    }
     
     
    public static String packetHeader(long n) {
       return "HTTP/1.0 200 Document Follows\r\n" +
             "Content-Type: text/plain\r\n" +
-            "Content-Length: " + n  + "\r\n\r\nData";
+            "Content-Length: " + n + "\r\n\r\n";
    } // packetHeader()
     
 
