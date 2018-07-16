@@ -5,7 +5,19 @@ import java.nio.charset.StandardCharsets;
 
 
 
-class UDPClient {
+abstract class UDP { 
+
+   public static int checkSum(byte[] d) {
+      int s = 0;
+      for (int i = 0; i < d.length; i++) s += d[i];
+      return s;
+   } // checkSum()
+
+} // UDP
+
+
+
+class UDPClient extends UDP {
 
 
    public static void sendRequest() {
@@ -44,17 +56,20 @@ class UDPClient {
 
          int serverCheckSum = extractCheckSum(incomingString);
 
+
          String message = deleteHeader(incomingString);
 
-         System.out.println("\n\n\nsequence:[" + message + "]\n\n\n");
-
+         System.out.print(message);
 
          int clientCheckSum = checkSum(message.getBytes());
 
-         System.out.println("server check sum is [" + serverCheckSum + "] client check sum is [" + clientCheckSum + "]");
+
+         if (serverCheckSum != clientCheckSum) {
+            System.out.print("\n\n!Detected Packet Corruption!\n\n");
+         }
+
          str.concat(incomingString);
          writer.write(incomingString);
-
             
       } // while true
 
@@ -63,21 +78,11 @@ class UDPClient {
    } // main()
 
 
-  // public static void extractData
-
-   public static int checkSum(byte[] d) {
-      int s = 0;
-      for (int i = 0; i < d.length; i++) s += d[i];
-      return s;
-   } // checkSum()
-
-   
    public static int extractCheckSum(String s ) {
       String fDim = "Checksum:";
       String sDim = "\r\n\r\n";
 
      if (!s.contains(fDim) || !s.contains(sDim) || s.contains("?")) return - 1;
-
 
       String l = s.split(fDim)[1];
       String r = l.split(sDim)[0];
@@ -108,7 +113,7 @@ class UDPClient {
 
 
 
-class UDPServer {
+class UDPServer extends UDP {
 
    public static int getProbability() throws IOException {
       BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
@@ -145,7 +150,6 @@ class UDPServer {
 
          RandomAccessFile data = new RandomAccessFile(extractFileName(request), "r");
       	
-         long fSize = 0;
          int dataOffset = 0;
          int sequenceNum = 0;
 
@@ -154,16 +158,9 @@ class UDPServer {
             // Create and send packet
          while (dataOffset != -1) {
                 
-            String dataToSend = "";
-            byte[] header = new byte [256];
             byte[] packet = new byte [256];
                 
-         
-
-       
             dataOffset = data.read(packet, 0, (packet.length - headerLength - 1));
-
-
             byte [] finalHeader = makePacketHeader(sequenceNum, checkSum(packet)).getBytes();
 
 
@@ -173,34 +170,15 @@ class UDPServer {
 
             byte [] c = outputStream.toByteArray();
 
-            System.out.println("\n\n\nsequence:"+ sequenceNum+ "[" + c + "]\n\n\n");
-         
-                
-                
-            dataToSend = calculateCheckSum(packet);
-
-            System.out.println("packet" + sequenceNum + " data:[" + dataToSend + "]");
-                
-
-                
-                // if last packet
+               
             if (dataOffset == -1) {
-               header[header.length - 1] = 0;
-               dataToSend = calculateCheckSum(header);
-               sendData = dataToSend.getBytes();
-             //  System.out.println("\n\nTHE DAT IS [" + dataToSend + "]");
-
                byte [] nullarray = randoms.getBytes();
-               DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                DatagramPacket nullpacket = new DatagramPacket(nullarray, nullarray.length, addr, port);
-             ///  serverSocket.send(sendPacket);
                serverSocket.send(nullpacket);
                break;
-            	//sending packets to client
             } 
             else {
-               sendData = c;//dataToSend.getBytes();
-               //checkSum = checkSum(sendData);
+               sendData = c;
                sendData = Gremlin(sendData, prob);
                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
                serverSocket.send(sendPacket);
@@ -209,8 +187,7 @@ class UDPServer {
             sequenceNum++;
 
 
-                
-                
+      
          } // while dataOffset
             
             
@@ -223,33 +200,18 @@ class UDPServer {
 
 
    public static String extractFileName(String s) {
-      String fDim = "GET ";
-      String sDim = ".html";
-
-      String [] t = s.split(fDim);
-      String f = t[1].split(sDim)[0];
-
+      String [] t = s.split("GET ");
+      String f = t[1].split(".html")[0];
       return f + ".html";
-   }
+   } // extractFileName()
 
 
-    
-    //gets the checksum to check for bit errors
-   public static String calculateCheckSum(byte[] packetInfo) {
-      int fullCheckSum = checkSum(packetInfo);
-      String message = new String(packetInfo);
-      String checkSum = Integer.toString(fullCheckSum);
-      //message += "insert check sum";
-      return message;
-   }
-
-    
    public static String makePacketHeader(int packetNum, int checkSum) {
       return "Packet:" + packetNum + "\nChecksum:" + checkSum + "\r\n\r\n";
    }
 
 
-      public static String defaultHeader() {
+   public static String defaultHeader() {
       return "Packet:0000\nChecksum:0000\r\n\r\n";
    }
     
@@ -260,6 +222,8 @@ class UDPServer {
             "Content-Length: " + n + "\r\n\r\n";
    } // packetHeader()
     
+
+
 
     //44 is a random number to corrupt the bit
    public static byte[] Gremlin(byte[] input, int prob) {
@@ -298,11 +262,7 @@ class UDPServer {
    
    
     
-   public static int checkSum(byte[] d) {
-      int s = 0;
-      for (int i = 0; i < d.length; i++) s += d[i];
-      return s;
-   } // checkSum()
+
 } // UDPServer
 
 
