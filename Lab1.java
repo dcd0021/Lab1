@@ -71,7 +71,7 @@ class UDPClient {
       String fDim = "Checksum:";
       String sDim = "\r\n\r\n";
 
-     if (!s.contains(fDim) || !s.contains(sDim)) return - 1;
+     if (!s.contains(fDim) || !s.contains(sDim) || s.contains("?")) return - 1;
 
       String l = s.split(fDim)[1];
       String r = l.split(sDim)[0];
