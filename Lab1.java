@@ -21,10 +21,10 @@ class UDPClient extends UDP {
 
 
    public static void main(String args[]) throws Exception {
+      double probability = (args.length > 0) ? Double.parseDouble(args[0]) : 0.0;
+      System.out.println("Gremlin probability is set to: " + probability);
       DatagramSocket clientSocket = new DatagramSocket();
       BufferedWriter writer = new BufferedWriter(new FileWriter("Outing.txt"));
-      int probabilty = getProbability();
-
       sendRequest(clientSocket);
       byte[] receiveData = new byte[256];
 
@@ -37,16 +37,17 @@ class UDPClient extends UDP {
          int serverCheckSum = extractCheckSum(incomingString);
          String message = deleteHeader(incomingString);
 
+         // if is null char
          if (serverCheckSum == 0) break;
 
-         message = Gremlin(message, probabilty);
+         message = Gremlin(message, probability);
          int clientCheckSum = checkSum(message.getBytes());
          System.out.print(message);
 
          if (serverCheckSum != clientCheckSum) 
             System.out.print("\n\n! Detected Packet:" + packetNumber + " is Corrupted !\n\n");
          
-         writer.write(incomingString);   
+         writer.write(message);   
       } // while true
 
       System.out.println("\n\n");
@@ -86,25 +87,22 @@ class UDPClient extends UDP {
    } // extractCheckSum()
 
 
-   public static String deleteHeader(String packet){
-      if(!packet.contains(crlf)) return packet;
-      return packet.split(crlf)[1];
+   public static String deleteHeader(String packet) {
+     
+     if (!packet.contains(crlf)) return packet;
+
+     String [] result = packet.split(crlf);
+
+     if (result.length == 3) return result[2];
+
+      return result[1];
    } // deleteHeader()
 
 
-   public static int getProbability() throws IOException {
-      BufferedReader in = new BufferedReader (new InputStreamReader(System.in));
-      System.out.println("What probabilty would you like the Gremlin to use?");
-      String probs = in.readLine();
-      return Integer.parseInt(probs);
-   } // getProbability()
-
-
-   public static String Gremlin(String in, int prob) {
+   public static String Gremlin(String in, double prob) {
       byte [] input = in.getBytes();
       Random rGen = new Random();
-
-      int innerProbability = rGen.nextInt(100);
+      double innerProbability = Math.random();
       if (prob < innerProbability) return in;
 
       int curruptBits = rGen.nextInt(3);
@@ -120,6 +118,7 @@ class UDPClient extends UDP {
 class UDPServer extends UDP {
 
    public static void main(String args[]) throws Exception {
+
       DatagramSocket serverSocket = new DatagramSocket(10014);
       byte[] receiveData = new byte[256];
       byte[] sendData  = new byte[256];
@@ -133,27 +132,40 @@ class UDPServer extends UDP {
          InetAddress addr = receivePacket.getAddress();
 
          String request = new String(receivePacket.getData());
-         RandomAccessFile data = new RandomAccessFile(extractFileName(request), "r");
-      	
-         int numberOfBits = 0, sequenceNum = 0;      
+         RandomAccessFile data;
+
+         try {
+            data = new RandomAccessFile(extractFileName(request), "r");
+         } catch (FileNotFoundException e) {
+            System.out.println("Error - file does not exist. Cannot complete request.");
+            continue; 
+         }
+
+         int numberOfBits = 0, packetNumber = 0;      
          while (numberOfBits != -1) {
                 
             byte[] packet = new byte [256];
-            numberOfBits = data.read(packet, 0, (packet.length - defaultHeader().getBytes().length));
+
+            // first packet so send the '200' message
+            String packetHeader = packetNumber == 0 ? fileSuccessMessage(data.length()) : "";
+
+            numberOfBits = data.read(packet, 0, (packet.length - defaultHeader().getBytes().length - packetHeader.length()));
 
             // set as null char 
             if (numberOfBits == -1) packet = new byte [packet.length];
+
+            packetHeader += makePacketHeader(packetNumber, checkSum(packet));
             
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            outputStream.write(makePacketHeader(sequenceNum, checkSum(packet)).getBytes());
+            outputStream.write(packetHeader.getBytes());
             outputStream.write(packet);
             sendData = outputStream.toByteArray();
 
-            System.out.println("\n\npacket:"+ sequenceNum + "\ndata:[" + new String(sendData, StandardCharsets.UTF_8) + "]");
+            System.out.println("\n\npacket:"+ packetNumber + "\ndata:[" + new String(sendData, StandardCharsets.UTF_8) + "]");
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, port);
             serverSocket.send(sendPacket);
 
-            sequenceNum++;
+            packetNumber++;
          } // while numberOfBits
             
       } // while true
@@ -176,10 +188,8 @@ class UDPServer extends UDP {
    } // defaultHeader()
     
     
-   public static String packetHeader(long n) {
-      return "HTTP/1.0 200 Document Follows\r\n" +
-            "Content-Type: text/plain\r\n" +
-            "Content-Length: " + n + crlf;
+   public static String fileSuccessMessage(long n) {
+      return "HTTP/1.0 200 Document Follows\r\nContent-Type: text/plain\r\nContent-Length: " + n + crlf;
    } // packetHeader()
     
 
